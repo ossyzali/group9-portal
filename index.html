@@ -399,107 +399,31 @@ let S = {
   accessToken: null
 };
 
-// ── DRIVE AUTH ────────────────────────────────────────────
-const CLIENT_ID = '756490602425-svsrkmhgp85v5cj17j90g1tq2jkb2dvv.apps.googleusercontent.com';
-const SCOPES = 'https://www.googleapis.com/auth/drive.file';
-let tokenClient;
+// ── APPS SCRIPT UPLOAD — No login required ────────────────
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwvLn9xBT24nhtAN7-67GeKAvjJsJ1WlvpLo4oG01jxFB_HowCZMfFNszR-mA8Qhca_xA/exec';
 
-// Auto-refresh token before it expires
-let tokenRefreshTimer = null;
-
-function scheduleTokenRefresh(){
-  if(tokenRefreshTimer) clearTimeout(tokenRefreshTimer);
-  // Refresh after 50 minutes (token lasts 60 min — refresh early)
-  tokenRefreshTimer = setTimeout(()=>{ silentRefresh(); }, 50 * 60 * 1000);
-}
-
-function silentRefresh(){
-  if(!tokenClient) return;
-  // Request new token silently — no popup if already signed in
-  tokenClient.requestAccessToken({ prompt:'' });
-}
-
+// Drive is always connected via Apps Script — no sign in needed
 function handleDriveAuth(){
-  if(S.accessToken){ showManualMode(); return; }
-  if(!tokenClient){
-    tokenClient = google.accounts.oauth2.initTokenClient({
-      client_id: CLIENT_ID,
-      scope: SCOPES,
-      callback:(resp)=>{
-        if(resp.error){ alert('Sign in failed: '+resp.error); return; }
-        S.accessToken = resp.access_token;
-        // Save token expiry time
-        localStorage.setItem('g9_token', resp.access_token);
-        localStorage.setItem('g9_token_time', Date.now().toString());
-        setOAuthConnected();
-        scheduleTokenRefresh();
-      }
-    });
-  }
-  tokenClient.requestAccessToken({ prompt: S.accessToken ? '' : 'select_account' });
+  // Just show info — no login needed
+  alert('✅ No sign in needed!\n\nFiles upload automatically to the shared Google Drive folder.\n\nJust select your name, upload screenshots, fill in notes and click Submit.');
 }
 
-function tryRestoreSession(){
-  // Try to restore previous session silently on page load
-  const savedToken = localStorage.getItem('g9_token');
-  const savedTime = parseInt(localStorage.getItem('g9_token_time') || '0');
-  const elapsed = Date.now() - savedTime;
-  // If token was saved less than 55 minutes ago, restore it
-  if(savedToken && elapsed < 55 * 60 * 1000){
-    S.accessToken = savedToken;
-    setOAuthConnected();
-    // Schedule refresh for remaining time
-    const remaining = (55 * 60 * 1000) - elapsed;
-    tokenRefreshTimer = setTimeout(()=>{ silentRefresh(); }, remaining);
-  }
-}
+function showManualMode(){ handleDriveAuth(); }
+function saveFolderId(){ handleDriveAuth(); }
+function tryRestoreSession(){}
 
-function showManualMode(){
-  const s = document.getElementById('folderSetup');
-  s.classList.toggle('visible');
-  if(S.rootFolderId) document.getElementById('folderIdInput').value = S.rootFolderId;
-}
-
-function saveFolderId(){
-  let input = document.getElementById('folderIdInput').value.trim();
-  if(!input){ alert('Please paste the folder ID or full Drive URL'); return; }
-  // Extract ID if user pasted full URL
-  const match = input.match(/folders\/([a-zA-Z0-9_-]+)/);
-  const id = match ? match[1] : input;
-  S.rootFolderId = id;
-  localStorage.setItem('g9_root_folder', id);
-  document.getElementById('folderSetup').classList.remove('visible');
-  setConnected();
-}
-
-function setConnected(){
+function setAppsScriptConnected(){
   const btn = document.getElementById('driveBtn');
   btn.classList.add('connected');
-  btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none"><path d="M4.5 20.25L8.25 13.5H20.25L16.5 20.25H4.5Z" fill="#ffb800"/><path d="M15 3.75L20.25 13.5H8.25L3 3.75H15Z" fill="#ffb800"/><path d="M3 3.75L8.25 13.5L4.5 20.25L0 10.5L3 3.75Z" fill="#ffb800"/></svg> Manual Mode`;
-  document.getElementById('driveStatus').textContent = '✓ Folder ID saved — or click to Sign in with Google for auto-upload';
-  document.getElementById('driveStatus').className = 'drive-status';
-  document.getElementById('driveStatus').style.color = 'var(--fixed)';
-  btn.onclick = showManualMode;
-  document.getElementById('driveWarning').style.display = 'none';
-}
-
-function setOAuthConnected(){
-  const btn = document.getElementById('driveBtn');
-  btn.classList.add('connected');
-  btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none"><path d="M4.5 20.25L8.25 13.5H20.25L16.5 20.25H4.5Z" fill="#00ff88"/><path d="M15 3.75L20.25 13.5H8.25L3 3.75H15Z" fill="#00ff88"/><path d="M3 3.75L8.25 13.5L4.5 20.25L0 10.5L3 3.75Z" fill="#00ff88"/></svg> ✓ Google Drive Connected`;
-  document.getElementById('driveStatus').textContent = '✓ Signed in — files upload directly to Drive automatically';
+  btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none"><path d="M4.5 20.25L8.25 13.5H20.25L16.5 20.25H4.5Z" fill="#00ff88"/><path d="M15 3.75L20.25 13.5H8.25L3 3.75H15Z" fill="#00ff88"/><path d="M3 3.75L8.25 13.5L4.5 20.25L0 10.5L3 3.75Z" fill="#00ff88"/></svg> ✓ Auto Upload Ready`;
+  document.getElementById('driveStatus').textContent = '✓ No sign in needed — files go straight to Drive';
   document.getElementById('driveStatus').className = 'drive-status ok';
   document.getElementById('driveWarning').style.display = 'none';
-  btn.onclick = ()=>{
-    if(confirm('Disconnect Google Drive?')){
-      S.accessToken = null;
-      localStorage.removeItem('g9_token');
-      localStorage.removeItem('g9_token_time');
-      if(tokenRefreshTimer) clearTimeout(tokenRefreshTimer);
-      location.reload();
-    }
-  };
+  btn.onclick = handleDriveAuth;
 }
+
+function setConnected(){ setAppsScriptConnected(); }
+function setOAuthConnected(){ setAppsScriptConnected(); }
 
 // ── MEMBER ────────────────────────────────────────────────
 function selectMember(el, num, name, role){
@@ -637,11 +561,9 @@ function buildSummary(){
     <div class="summary-row"><span class="summary-key">Conclusion</span><span class="badge ${g('cn1')}">${gv('cn1')}</span></div>
     <div class="summary-row">
       <span class="summary-key">Upload method</span>
-      <span class="summary-val" style="color:${S.accessToken?'var(--success)':S.rootFolderId?'var(--fixed)':'var(--error)'}">
-        ${S.accessToken?'✓ Auto upload to Drive (OAuth)':S.rootFolderId?'⚠ Manual (folder ID set — download then drag to Drive)':'✗ Not connected — click Connect Google Drive'}
-      </span>
+      <span class="summary-val" style="color:var(--success)">✓ Auto upload to Osman's Drive folder</span>
     </div>`;
-  document.getElementById('submitBtn').textContent = S.accessToken ? '↑ Upload to Drive' : '↓ Download Files';
+  document.getElementById('submitBtn').textContent = '↑ Upload to Drive';
 }
 
 function g(id){ return document.getElementById(id)&&document.getElementById(id).value?'bs':'bn'; }
@@ -815,131 +737,101 @@ async function submitAll(){
     </div>`;
   }).join('');
 
-  if(S.accessToken){
-    await uploadToDrive(items);
-  } else {
-    await saveLocally(items);
-  }
+  // Always use Apps Script — no login needed
+  await uploadViaAppsScript(items);
 }
 
-// ── GOOGLE DRIVE UPLOAD ───────────────────────────────────
-async function uploadToDrive(items){
+// ── APPS SCRIPT UPLOAD ────────────────────────────────────
+async function uploadViaAppsScript(items){
   const bar = document.getElementById('progressBar');
-  const sectionFolderName = `${S.num}-${S.role.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/-+$/,'')}`;
+  const sectionFolder = `${S.num}-${S.role.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/-+$/,'')}`;
+  const driveUrl = 'https://drive.google.com/drive/folders/1K3O7dVVzsmGyoa3ZfdNDiNIkuKA0ADCN';
+  let allOk = true;
 
-  try {
-    // Get or create member section folder inside root
-    const memberFolderId = await getOrCreateFolder(sectionFolderName, S.rootFolderId);
-    const successId = await getOrCreateFolder('success', memberFolderId);
-    const errorId   = await getOrCreateFolder('error',   memberFolderId);
-    const fixedId   = await getOrCreateFolder('fixed',   memberFolderId);
-    const folderMap = { success: successId, error: errorId, fixed: fixedId, reflection: memberFolderId };
-
-    for(let i=0; i<items.length; i++){
-      const item = items[i];
-      const ps = document.getElementById(`ps${i}`);
-      ps.textContent='Uploading...'; ps.className='progress-status uploading';
-      try {
-        if(item.kind==='screenshot'){
-          // Rename file and upload
-          const renamedBlob = item.file.slice(0, item.file.size, item.file.type);
-          await uploadFile(renamedBlob, item.newName, item.file.type, folderMap[item.type]);
-        } else {
-          const blob = new Blob([item.note.content],{type:'text/plain'});
-          await uploadFile(blob, item.note.filename, 'text/plain', folderMap[item.type]);
-        }
-        ps.textContent='Uploaded ✓'; ps.className='progress-status done';
-      } catch(e){
-        ps.textContent='Failed ✗'; ps.className='progress-status fail';
-      }
-      bar.style.width=`${Math.round((i+1)/items.length*100)}%`;
-    }
-    showSuccess(true, `https://drive.google.com/drive/folders/${memberFolderId}`);
-  } catch(e){
-    alert('Drive upload error: '+e.message+'\nFalling back to download mode.');
-    await saveLocally(items);
-  }
-}
-
-async function getOrCreateFolder(name, parentId){
-  if(!parentId){ throw new Error('No parent folder ID set. Please connect Google Drive first.'); }
-  const q = `name='${name}' and mimeType='application/vnd.google-apps.folder' and '${parentId}' in parents and trashed=false`;
-  const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name)`,{
-    headers:{ Authorization:`Bearer ${S.accessToken}` }
-  });
-  const data = await res.json();
-  if(data.files && data.files.length > 0) return data.files[0].id;
-  const create = await fetch('https://www.googleapis.com/drive/v3/files',{
-    method:'POST',
-    headers:{ Authorization:`Bearer ${S.accessToken}`, 'Content-Type':'application/json' },
-    body: JSON.stringify({ name, mimeType:'application/vnd.google-apps.folder', parents:[parentId] })
-  });
-  const folder = await create.json();
-  if(!folder.id) throw new Error('Could not create folder: '+name);
-  return folder.id;
-}
-
-async function uploadFile(blob, name, mimeType, folderId){
-  const meta = JSON.stringify({ name, parents:[folderId] });
-  const form = new FormData();
-  form.append('metadata', new Blob([meta],{type:'application/json'}));
-  form.append('file', blob);
-  const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{
-    method:'POST',
-    headers:{ Authorization:`Bearer ${S.accessToken}` },
-    body: form
-  });
-  if(!res.ok) throw new Error(`Upload failed: HTTP ${res.status}`);
-  return res.json();
-}
-
-async function saveLocally(items){
-  const bar = document.getElementById('progressBar');
   for(let i=0; i<items.length; i++){
     const item = items[i];
     const ps = document.getElementById(`ps${i}`);
-    ps.textContent='Downloading...'; ps.className='progress-status uploading';
-    await new Promise(r=>setTimeout(r,300));
+    ps.textContent='Uploading...'; ps.className='progress-status uploading';
 
-    if(item.kind==='note'){
-      // Download .txt file
-      const blob = new Blob([item.note.content],{type:'text/plain'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href=url; a.download=item.note.filename; a.click();
-      URL.revokeObjectURL(url);
-      ps.textContent='Downloaded ✓'; ps.className='progress-status done';
-    } else {
-      // Download screenshot with new proper name
-      const url = URL.createObjectURL(item.file);
-      const a = document.createElement('a');
-      a.href=url; a.download=item.newName; a.click();
-      URL.revokeObjectURL(url);
-      ps.textContent='Downloaded ✓'; ps.className='progress-status done';
+    try {
+      let fileName, mimeType, base64Data, folderPath;
+
+      if(item.kind==='screenshot'){
+        fileName = item.newName;
+        mimeType = item.file.type || 'image/png';
+        folderPath = `${sectionFolder}/${item.type}`;
+        // Read file as base64
+        base64Data = await fileToBase64(item.file);
+      } else {
+        fileName = item.note.filename;
+        mimeType = 'text/plain';
+        // reflection goes in main section folder, others in type subfolder
+        folderPath = item.type === 'reflection' ? sectionFolder : `${sectionFolder}/${item.type}`;
+        base64Data = btoa(unescape(encodeURIComponent(item.note.content)));
+      }
+
+      // Send to Apps Script via form submission (avoids CORS)
+      const formData = new FormData();
+      formData.append('filename', fileName);
+      formData.append('mimeType', mimeType);
+      formData.append('folder', folderPath);
+      formData.append('data', base64Data);
+
+      const res = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        body: formData
+      });
+
+      const text = await res.text();
+      let result;
+      try { result = JSON.parse(text); } catch(e){ result = { success: false, error: text }; }
+
+      if(result.success){
+        ps.textContent='Uploaded ✓'; ps.className='progress-status done';
+      } else {
+        throw new Error(result.error || 'Upload failed');
+      }
+    } catch(e){
+      ps.textContent='Failed ✗'; ps.className='progress-status fail';
+      allOk = false;
+      console.error('Upload error:', e);
     }
 
     bar.style.width=`${Math.round((i+1)/items.length*100)}%`;
-    await new Promise(r=>setTimeout(r,400));
+    await new Promise(r=>setTimeout(r,200));
   }
-  showSuccess();
+
+  showSuccess(allOk, driveUrl);
 }
 
-function showSuccess(direct=false, driveUrl=null){
+function fileToBase64(file){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      // Remove the data:...;base64, prefix
+      const base64 = reader.result.split(',')[1];
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function showSuccess(allOk=true, driveUrl=null){
   document.getElementById('uploadProgress').classList.remove('visible');
   const screen = document.getElementById('successScreen');
   screen.classList.add('visible');
-  if(direct){
+  if(allOk){
     document.getElementById('successBody').innerHTML =
       `✅ All files uploaded directly to Google Drive.<br>Screenshots and notes are in your section folder — Osman can see them now.`;
   } else {
     document.getElementById('successBody').innerHTML =
-      `✅ All files downloaded to your computer with correct names.<br><br>Now drag everything into your section folder on Google Drive:<br>• Screenshots → into success / error / fixed subfolder<br>• .txt notes → next to their matching screenshot<br>• reflection.txt → in your main section folder`;
+      `⚠ Some files failed to upload. Check your internet connection and try again.<br>Scroll up to see which files failed.`;
   }
-  const url = driveUrl || (S.rootFolderId ? `https://drive.google.com/drive/folders/${S.rootFolderId}` : null);
-  if(url){
+  if(driveUrl){
     document.getElementById('driveLinkBox').style.display='inline-block';
-    document.getElementById('driveLink').href=url;
-    document.getElementById('driveLink').textContent=url;
+    document.getElementById('driveLink').href=driveUrl;
+    document.getElementById('driveLink').textContent=driveUrl;
   }
 }
 
@@ -970,9 +862,8 @@ function resetAll(){
 }
 
 window.addEventListener('load',()=>{
-  if(S.rootFolderId) setConnected();
-  // Try to restore previous Google sign-in session
-  setTimeout(()=>{ tryRestoreSession(); }, 1000);
+  // Always connected via Apps Script — show green immediately
+  setAppsScriptConnected();
 });
 </script>
 </body>
