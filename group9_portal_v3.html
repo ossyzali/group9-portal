@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Group 9 — DMI Submission Portal v3</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap');
+:root{--bg:#0a0a0f;--surface:#13131a;--surface2:#1c1c28;--border:#2a2a3d;--accent:#00e5ff;--success:#00ff88;--error:#ff3b5c;--fixed:#ffb800;--purple:#c084fc;--text:#e8e8f0;--muted:#6b6b8a;--card:#16161f;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,229,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,0.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0;}
+header{position:relative;z-index:1;padding:36px 40px 24px;border-bottom:1px solid var(--border);background:linear-gradient(180deg,rgba(0,229,255,0.05) 0%,transparent 100%);}
+.header-inner{max-width:960px;margin:0 auto;display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap;}
+.header-tag{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent);letter-spacing:3px;text-transform:uppercase;margin-bottom:8px;opacity:.8;}
+h1{font-size:clamp(22px,3vw,38px);font-weight:800;background:linear-gradient(135deg,#fff 0%,var(--accent) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:5px;}
+.subtitle{color:var(--muted);font-size:12px;font-family:'JetBrains Mono',monospace;}
+.drive-connect{display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
+.drive-btn{display:flex;align-items:center;gap:8px;padding:9px 16px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s;white-space:nowrap;}
+.drive-btn:hover{border-color:var(--accent);color:var(--accent);}
+.drive-btn.connected{border-color:var(--success);color:var(--success);background:rgba(0,255,136,0.06);}
+.drive-btn svg{width:16px;height:16px;flex-shrink:0;}
+.drive-status{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);text-align:right;}
+.drive-status.ok{color:var(--success);}
+.folder-setup{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px 22px;margin-bottom:28px;display:none;}
+.folder-setup.visible{display:block;}
+.folder-label{font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;}
+.folder-hint{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:12px;line-height:1.6;}
+.folder-input{background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:9px 12px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;width:100%;margin-bottom:10px;}
+.folder-input:focus{outline:none;border-color:var(--accent);}
+.folder-save-btn{background:var(--accent);color:#000;border:none;padding:9px 18px;border-radius:7px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;}
+.container{position:relative;z-index:1;max-width:960px;margin:0 auto;padding:32px 20px;}
+.steps{display:flex;margin-bottom:32px;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.step{flex:1;padding:12px 8px;text-align:center;font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;border-right:1px solid var(--border);transition:all .3s;}
+.step:last-child{border-right:none;}
+.step.active{background:rgba(0,229,255,0.08);color:var(--accent);}
+.step.done{background:rgba(0,255,136,0.05);color:var(--success);}
+.step-num{display:block;font-size:15px;font-weight:700;margin-bottom:2px;}
+.form-section{display:none;animation:fadeIn .4s ease;}
+.form-section.active{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.section-title{font-size:20px;font-weight:700;margin-bottom:5px;color:#fff;}
+.section-desc{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:24px;}
+.member-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:9px;margin-bottom:24px;}
+.member-card{background:var(--card);border:1px solid var(--border);border-radius:9px;padding:13px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;}
+.member-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent);transform:scaleX(0);transition:transform .2s;}
+.member-card:hover{border-color:var(--accent);transform:translateY(-2px);}
+.member-card:hover::before,.member-card.selected::before{transform:scaleX(1);}
+.member-card.selected{border-color:var(--accent);background:rgba(0,229,255,0.06);}
+.member-num{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);margin-bottom:4px;opacity:.7;}
+.member-name{font-size:12px;font-weight:700;color:#fff;margin-bottom:3px;line-height:1.3;}
+.member-role{font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;}
+
+/* Upload zones */
+.upload-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px;}
+@media(max-width:560px){.upload-grid{grid-template-columns:1fr;}}
+.upload-zone{background:var(--card);border:2px dashed var(--border);border-radius:12px;padding:18px 12px;text-align:center;cursor:pointer;transition:all .2s;}
+.upload-zone.sz{border-color:rgba(0,255,136,0.35);}
+.upload-zone.ez{border-color:rgba(255,59,92,0.35);}
+.upload-zone.fz{border-color:rgba(255,184,0,0.35);}
+.upload-zone:hover.sz,.upload-zone.drag.sz{border-color:var(--success);background:rgba(0,255,136,0.04);}
+.upload-zone:hover.ez,.upload-zone.drag.ez{border-color:var(--error);background:rgba(255,59,92,0.04);}
+.upload-zone:hover.fz,.upload-zone.drag.fz{border-color:var(--fixed);background:rgba(255,184,0,0.04);}
+.zone-icon{font-size:24px;margin-bottom:7px;}
+.zone-label{font-size:12px;font-weight:700;margin-bottom:3px;}
+.sz .zone-label{color:var(--success);}
+.ez .zone-label{color:var(--error);}
+.fz .zone-label{color:var(--fixed);}
+.zone-hint{font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:5px;}
+.zone-count{font-size:11px;font-family:'JetBrains Mono',monospace;font-weight:700;margin-top:8px;}
+.sz .zone-count{color:var(--success);}
+.ez .zone-count{color:var(--error);}
+.fz .zone-count{color:var(--fixed);}
+.file-input{display:none;}
+.file-list{margin-top:8px;display:flex;flex-direction:column;gap:4px;text-align:left;}
+.file-item{background:var(--surface2);border-radius:5px;padding:5px 7px;font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--text);display:flex;align-items:center;gap:5px;word-break:break-all;}
+.fdot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+.sz .fdot{background:var(--success);}
+.ez .fdot{background:var(--error);}
+.fz .fdot{background:var(--fixed);}
+
+/* Notes — per screenshot */
+.notes-section{margin-bottom:28px;}
+.notes-category-header{display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:10px 10px 0 0;font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;border:1px solid var(--border);border-bottom:none;}
+.notes-category-header.sh{color:var(--success);background:rgba(0,255,136,0.06);}
+.notes-category-header.eh{color:var(--error);background:rgba(255,59,92,0.06);}
+.notes-category-header.fh{color:var(--fixed);background:rgba(255,184,0,0.06);}
+.notes-category-body{border:1px solid var(--border);border-radius:0 0 10px 10px;overflow:hidden;margin-bottom:20px;}
+.note-card{background:var(--card);border-bottom:1px solid var(--border);padding:16px 20px;}
+.note-card:last-child{border-bottom:none;}
+.note-card-header{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+.note-card-num{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;font-family:'JetBrains Mono',monospace;flex-shrink:0;}
+.sh-num{background:rgba(0,255,136,0.15);color:var(--success);}
+.eh-num{background:rgba(255,59,92,0.15);color:var(--error);}
+.fh-num{background:rgba(255,184,0,0.15);color:var(--fixed);}
+.note-card-filename{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent);word-break:break-all;}
+.note-fields{display:grid;gap:10px;}
+.field-group{display:grid;gap:4px;}
+.field-label{font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
+.field-textarea{background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:9px 11px;color:var(--text);font-family:'Syne',sans-serif;font-size:12px;width:100%;transition:border-color .2s;resize:vertical;min-height:64px;}
+.field-textarea:focus{outline:none;border-color:var(--accent);}
+.empty-note-hint{padding:20px;text-align:center;font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--muted);}
+
+/* Reflection blocks */
+.reflection-block{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:16px;}
+.reflection-header{padding:12px 18px;font-size:12px;font-weight:700;font-family:'JetBrains Mono',monospace;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);}
+.rh-accent{color:var(--accent);background:rgba(0,229,255,0.04);}
+.rh-error{color:var(--error);background:rgba(255,59,92,0.04);}
+.rh-fixed{color:var(--fixed);background:rgba(255,184,0,0.04);}
+.rh-success{color:var(--success);background:rgba(0,255,136,0.04);}
+.rh-purple{color:var(--purple);background:rgba(192,132,252,0.04);}
+.rdot{width:7px;height:7px;border-radius:50%;}
+.rh-accent .rdot{background:var(--accent);}
+.rh-error .rdot{background:var(--error);}
+.rh-fixed .rdot{background:var(--fixed);}
+.rh-success .rdot{background:var(--success);}
+.rh-purple .rdot{background:var(--purple);}
+.reflection-fields{padding:16px;display:grid;gap:12px;}
+
+/* Buttons */
+.btn-row{display:flex;gap:10px;justify-content:flex-end;margin-top:8px;}
+.btn{padding:10px 22px;border-radius:8px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;border:none;transition:all .2s;}
+.btn-secondary{background:var(--surface2);color:var(--muted);border:1px solid var(--border);}
+.btn-secondary:hover{color:var(--text);border-color:var(--text);}
+.btn-primary{background:var(--accent);color:#000;}
+.btn-primary:hover{background:#fff;transform:translateY(-1px);}
+
+/* Summary */
+.summary-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px;}
+.summary-title{font-size:14px;font-weight:700;color:#fff;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+.summary-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:12px;}
+.summary-row:last-child{border-bottom:none;}
+.summary-key{color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:10px;}
+.summary-val{color:var(--text);font-weight:600;}
+.badge{padding:2px 8px;border-radius:20px;font-size:10px;font-family:'JetBrains Mono',monospace;font-weight:700;}
+.bs{background:rgba(0,255,136,0.15);color:var(--success);}
+.be{background:rgba(255,59,92,0.15);color:var(--error);}
+.bf{background:rgba(255,184,0,0.15);color:var(--fixed);}
+.bn{background:rgba(107,107,138,0.15);color:var(--muted);}
+
+/* Progress */
+.upload-progress{display:none;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px;margin-bottom:16px;text-align:center;}
+.upload-progress.visible{display:block;}
+.progress-title{font-size:14px;font-weight:700;color:#fff;margin-bottom:18px;}
+.progress-bar-wrap{background:var(--surface2);border-radius:20px;height:5px;width:100%;margin-bottom:14px;overflow:hidden;}
+.progress-bar{height:100%;background:var(--accent);border-radius:20px;transition:width .3s ease;width:0%;}
+.progress-list{display:flex;flex-direction:column;gap:8px;text-align:left;}
+.progress-item{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--surface2);border-radius:7px;font-size:11px;font-family:'JetBrains Mono',monospace;}
+.progress-icon{font-size:14px;width:18px;text-align:center;flex-shrink:0;}
+.progress-name{flex:1;color:var(--text);}
+.progress-status{color:var(--muted);font-size:10px;}
+.progress-status.uploading{color:var(--accent);}
+.progress-status.done{color:var(--success);}
+.progress-status.fail{color:var(--error);}
+
+/* Success */
+.success-screen{display:none;text-align:center;padding:48px 20px;}
+.success-screen.visible{display:block;animation:fadeIn .5s ease;}
+.success-icon{font-size:52px;margin-bottom:18px;display:block;}
+.success-heading{font-size:26px;font-weight:800;color:var(--success);margin-bottom:10px;}
+.success-body{color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.8;margin-bottom:24px;}
+.drive-link-box{background:var(--surface);border:1px solid var(--success);border-radius:10px;padding:14px 18px;margin-bottom:18px;display:inline-block;}
+.drive-link-label{font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:6px;}
+.drive-link-url{color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:11px;text-decoration:none;word-break:break-all;}
+.reset-btn{background:transparent;border:1px solid var(--border);color:var(--muted);padding:10px 22px;border-radius:8px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;margin-top:10px;}
+.reset-btn:hover{color:var(--text);border-color:var(--text);}
+.naming-preview{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-bottom:24px;}
+.naming-label{font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:7px;text-transform:uppercase;letter-spacing:1px;}
+.naming-example{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent);line-height:2.2;}
+.warn-banner{background:rgba(255,184,0,0.06);border:1px solid rgba(255,184,0,0.2);border-radius:8px;padding:10px 14px;margin-bottom:20px;font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--fixed);line-height:1.6;}
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-inner">
+    <div>
+      <div class="header-tag">Group 9 · DMI Final Project · v3</div>
+      <h1>Screenshot Submission Portal</h1>
+      <div class="subtitle">Spring PetClinic Microservices · Up to 10 screenshots per category · Direct Drive Upload</div>
+    </div>
+    <div class="drive-connect">
+      <button class="drive-btn" id="driveBtn" onclick="handleDriveAuth()">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M4.5 20.25L8.25 13.5H20.25L16.5 20.25H4.5Z" fill="#0066DA"/><path d="M15 3.75L20.25 13.5H8.25L3 3.75H15Z" fill="#00AC47"/><path d="M3 3.75L8.25 13.5L4.5 20.25L0 10.5L3 3.75Z" fill="#FFBA00"/></svg>
+        Connect Google Drive — Sign In
+      </button>
+      <div class="drive-status" id="driveStatus">Not connected — files saved locally</div>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+  <div class="folder-setup" id="folderSetup">
+    <div class="folder-label">Google Drive Folder ID</div>
+    <div class="folder-hint">Open your Group9-DMI-Final-Project folder on Google Drive.<br>Copy the ID from the URL: drive.google.com/drive/folders/<strong style="color:var(--accent)">THIS_PART_HERE</strong></div>
+    <input type="text" class="folder-input" id="folderIdInput" placeholder="e.g. 1NkPKVVF_gCMQqQY8EvMqogBG5rll-7YM">
+    <button class="folder-save-btn" onclick="saveFolderId()">Save Folder ID</button>
+  </div>
+
+  <div class="steps">
+    <div class="step active" id="step1"><span class="step-num">01</span>Member</div>
+    <div class="step" id="step2"><span class="step-num">02</span>Upload</div>
+    <div class="step" id="step3"><span class="step-num">03</span>Notes</div>
+    <div class="step" id="step4"><span class="step-num">04</span>Reflection</div>
+    <div class="step" id="step5"><span class="step-num">05</span>Review</div>
+  </div>
+
+  <!-- SECTION 1 -->
+  <div class="form-section active" id="section1">
+    <div class="section-title">Who are you?</div>
+    <div class="section-desc">// select your name to load your section number and folder</div>
+    <div class="member-grid">
+      <div class="member-card" onclick="selectMember(this,'01','Ikedimma Michael Rapuluchukwu','Project Lead / Scrum Coordinator')"><div class="member-num">01</div><div class="member-name">Ikedimma Michael</div><div class="member-role">Project Lead / Scrum</div></div>
+      <div class="member-card" onclick="selectMember(this,'02','Benjamin Akinteye','Git / Repo Engineer')"><div class="member-num">02</div><div class="member-name">Benjamin Akinteye</div><div class="member-role">Git / Repo Engineer</div></div>
+      <div class="member-card" onclick="selectMember(this,'03','Gift Chibugo Ukporo','Build Engineer')"><div class="member-num">03</div><div class="member-name">Gift Chibugo Ukporo</div><div class="member-role">Build Engineer</div></div>
+      <div class="member-card" onclick="selectMember(this,'04','Duru Juliet Chinenye','Docker and ACR Engineer')"><div class="member-num">04</div><div class="member-name">Duru Juliet Chinenye</div><div class="member-role">Docker & ACR Engineer</div></div>
+      <div class="member-card" onclick="selectMember(this,'05','Pradeep Kumar Neelaboyina','Terraform Engineer')"><div class="member-num">05</div><div class="member-name">Pradeep Kumar Neelaboyina</div><div class="member-role">Terraform Engineer</div></div>
+      <div class="member-card" onclick="selectMember(this,'06','Oladayo Aremu','Kubernetes & AKS Engineer')"><div class="member-num">06</div><div class="member-name">Oladayo Aremu</div><div class="member-role">Kubernetes & AKS Engineer</div></div>
+      <div class="member-card" onclick="selectMember(this,'07','Angela Chibuike','Helm Engineer')"><div class="member-num">07</div><div class="member-name">Angela Chibuike</div><div class="member-role">Helm Engineer</div></div>
+      <div class="member-card" onclick="selectMember(this,'08','Ubani OnU Chukwu','Azure Pipelines (CI/CD) Engineer')"><div class="member-num">08</div><div class="member-name">Ubani OnU Chukwu</div><div class="member-role">Azure Pipelines CI/CD</div></div>
+      <div class="member-card" onclick="selectMember(this,'09','Olanrewaju Awe','GenAI Engineer')"><div class="member-num">09</div><div class="member-name">Olanrewaju Awe</div><div class="member-role">GenAI Engineer</div></div>
+      <div class="member-card" onclick="selectMember(this,'10','Yinusa Kolawole Gbenga','Microservices & Deployment Engineer')"><div class="member-num">10</div><div class="member-name">Yinusa Kolawole Gbenga</div><div class="member-role">Microservices & Deployment</div></div>
+      <div class="member-card" onclick="selectMember(this,'11','Osman Ali Farah','Monitoring & QA Engineer')"><div class="member-num">11</div><div class="member-name">Osman Ali Farah</div><div class="member-role">Monitoring & QA Engineer</div></div>
+    </div>
+    <div class="btn-row"><button class="btn btn-primary" onclick="goTo(2)">Next →</button></div>
+  </div>
+
+  <!-- SECTION 2 -->
+  <div class="form-section" id="section2">
+    <div class="section-title">Upload Screenshots</div>
+    <div class="section-desc">// up to 10 screenshots per category · each will get its own note in the next step</div>
+    <div class="naming-preview">
+      <div class="naming-label">Your naming convention</div>
+      <div class="naming-example" id="namingEx">Select your name first</div>
+    </div>
+    <div id="driveWarning" class="warn-banner" style="display:none;">⚠ Google Drive not connected — .txt files will download to your computer. Upload screenshots manually to Drive.</div>
+    <div class="upload-grid">
+      <div class="upload-zone sz" onclick="triggerUpload('S')" ondragover="dOver(event,this)" ondragleave="dLeave(this)" ondrop="dDrop(event,'success')">
+        <div class="zone-icon">✅</div>
+        <div class="zone-label">SUCCESS</div>
+        <div class="zone-hint">Max 10 screenshots</div>
+        <input type="file" id="fS" class="file-input" multiple accept="image/*" onchange="addFiles(this.files,'success')">
+        <div class="zone-count" id="cntS">0 / 10 uploaded</div>
+        <div class="file-list" id="flS"></div>
+      </div>
+      <div class="upload-zone ez" onclick="triggerUpload('E')" ondragover="dOver(event,this)" ondragleave="dLeave(this)" ondrop="dDrop(event,'error')">
+        <div class="zone-icon">❌</div>
+        <div class="zone-label">ERROR</div>
+        <div class="zone-hint">Max 10 screenshots</div>
+        <input type="file" id="fE" class="file-input" multiple accept="image/*" onchange="addFiles(this.files,'error')">
+        <div class="zone-count" id="cntE">0 / 10 uploaded</div>
+        <div class="file-list" id="flE"></div>
+      </div>
+      <div class="upload-zone fz" onclick="triggerUpload('F')" ondragover="dOver(event,this)" ondragleave="dLeave(this)" ondrop="dDrop(event,'fixed')">
+        <div class="zone-icon">🔧</div>
+        <div class="zone-label">FIXED</div>
+        <div class="zone-hint">Max 10 screenshots</div>
+        <input type="file" id="fF" class="file-input" multiple accept="image/*" onchange="addFiles(this.files,'fixed')">
+        <div class="zone-count" id="cntF">0 / 10 uploaded</div>
+        <div class="file-list" id="flF"></div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="goTo(1)">← Back</button>
+      <button class="btn btn-primary" onclick="goTo(3)">Next →</button>
+    </div>
+  </div>
+
+  <!-- SECTION 3: Per-screenshot notes -->
+  <div class="form-section" id="section3">
+    <div class="section-title">Write Notes — One Per Screenshot</div>
+    <div class="section-desc">// every screenshot has its own dedicated note fields below</div>
+
+    <!-- SUCCESS NOTES -->
+    <div class="notes-section">
+      <div class="notes-category-header sh"><div style="width:8px;height:8px;border-radius:50%;background:var(--success);flex-shrink:0;"></div>✅ SUCCESS NOTES</div>
+      <div class="notes-category-body" id="notesSuccess">
+        <div class="empty-note-hint">No success screenshots uploaded — go back to Step 2 to add some.</div>
+      </div>
+    </div>
+
+    <!-- ERROR NOTES -->
+    <div class="notes-section">
+      <div class="notes-category-header eh"><div style="width:8px;height:8px;border-radius:50%;background:var(--error);flex-shrink:0;"></div>❌ ERROR NOTES</div>
+      <div class="notes-category-body" id="notesError">
+        <div class="empty-note-hint">No error screenshots uploaded — leave blank if no errors occurred.</div>
+      </div>
+    </div>
+
+    <!-- FIXED NOTES -->
+    <div class="notes-section">
+      <div class="notes-category-header fh"><div style="width:8px;height:8px;border-radius:50%;background:var(--fixed);flex-shrink:0;"></div>🔧 FIXED NOTES</div>
+      <div class="notes-category-body" id="notesFixed">
+        <div class="empty-note-hint">No fixed screenshots uploaded — leave blank if no fixes needed.</div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="goTo(2)">← Back</button>
+      <button class="btn btn-primary" onclick="goTo(4)">Next →</button>
+    </div>
+  </div>
+
+  <!-- SECTION 4: Reflection -->
+  <div class="form-section" id="section4">
+    <div class="section-title">Challenges & Lessons Learned</div>
+    <div class="section-desc">// your personal reflection — goes directly into the final report under your name</div>
+
+    <div class="reflection-block">
+      <div class="reflection-header rh-accent"><div class="rdot"></div>🧑‍💻 WHAT YOU DID</div>
+      <div class="reflection-fields">
+        <div class="field-group"><label class="field-label">Describe your work in your own words</label><textarea class="field-textarea" id="wd1" placeholder="e.g. I was responsible for setting up the Kubernetes cluster on AKS, creating namespaces, configuring secrets and configmaps, and verifying all pods were running correctly."></textarea></div>
+        <div class="field-group"><label class="field-label">Tools and commands you used</label><textarea class="field-textarea" id="wd2" placeholder="e.g. kubectl, az aks get-credentials, kubectl create namespace, kubectl apply -f"></textarea></div>
+        <div class="field-group"><label class="field-label">Final outcome of your work</label><textarea class="field-textarea" id="wd3" placeholder="e.g. All 7 microservice pods successfully running in the petclinic-ns namespace with correct service discovery"></textarea></div>
+      </div>
+    </div>
+
+    <div class="reflection-block">
+      <div class="reflection-header rh-error"><div class="rdot"></div>⚠️ MAIN CHALLENGE</div>
+      <div class="reflection-fields">
+        <div class="field-group"><label class="field-label">What was the hardest part of your role?</label><textarea class="field-textarea" id="ch1" placeholder="e.g. The biggest challenge was getting the Config Server pod to start before all other services."></textarea></div>
+        <div class="field-group"><label class="field-label">Why was it difficult?</label><textarea class="field-textarea" id="ch2" placeholder="e.g. Kubernetes does not automatically wait for one pod to be healthy before starting another unless you configure readiness probes correctly."></textarea></div>
+        <div class="field-group"><label class="field-label">How did you overcome it?</label><textarea class="field-textarea" id="ch3" placeholder="e.g. Added readiness probes to the Config Server deployment and configured initContainers on all dependent services."></textarea></div>
+      </div>
+    </div>
+
+    <div class="reflection-block">
+      <div class="reflection-header rh-fixed"><div class="rdot"></div>🔄 WHAT WOULD YOU DO DIFFERENTLY</div>
+      <div class="reflection-fields">
+        <div class="field-group"><label class="field-label">If you started your role again, what would you change?</label><textarea class="field-textarea" id="df1" placeholder="e.g. I would test the Kubernetes manifests locally using minikube before deploying to AKS."></textarea></div>
+        <div class="field-group"><label class="field-label">What would have saved you the most time?</label><textarea class="field-textarea" id="df2" placeholder="e.g. Having the Terraform infrastructure ready on Day 1. I had to wait two days for the AKS cluster before I could start."></textarea></div>
+      </div>
+    </div>
+
+    <div class="reflection-block">
+      <div class="reflection-header rh-success"><div class="rdot"></div>💡 KEY LEARNINGS</div>
+      <div class="reflection-fields">
+        <div class="field-group"><label class="field-label">Most important technical learning</label><textarea class="field-textarea" id="kl1" placeholder="e.g. I learned how Kubernetes manages container lifecycles — how pods are scheduled, how health checks work, and how services discover each other through DNS."></textarea></div>
+        <div class="field-group"><label class="field-label">Most important teamwork learning</label><textarea class="field-textarea" id="kl2" placeholder="e.g. In a real DevOps pipeline, your work directly blocks or enables the next person. Communication about delays is more important than the delay itself."></textarea></div>
+        <div class="field-group"><label class="field-label">One skill you will carry into your career</label><textarea class="field-textarea" id="kl3" placeholder="e.g. Kubernetes cluster management and kubectl proficiency — used in virtually every cloud-native company today."></textarea></div>
+      </div>
+    </div>
+
+    <div class="reflection-block">
+      <div class="reflection-header rh-purple"><div class="rdot"></div>📝 CONCLUSION</div>
+      <div class="reflection-fields">
+        <div class="field-group"><label class="field-label">Summarise your overall experience on this project</label><textarea class="field-textarea" id="cn1" placeholder="e.g. This project gave me hands-on experience with real production DevOps tools that I had only read about before."></textarea></div>
+        <div class="field-group"><label class="field-label">How has this project prepared you for industry?</label><textarea class="field-textarea" id="cn2" placeholder="e.g. I can now confidently say I have deployed a containerised application on Kubernetes and collaborated in a team with real role-based ownership."></textarea></div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="goTo(3)">← Back</button>
+      <button class="btn btn-primary" onclick="goTo(5)">Review →</button>
+    </div>
+  </div>
+
+  <!-- SECTION 5: Review -->
+  <div class="form-section" id="section5">
+    <div class="section-title">Review & Submit</div>
+    <div class="section-desc">// check everything then upload all files to Google Drive</div>
+    <div class="summary-card" id="summaryCard"></div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="goTo(4)">← Back</button>
+      <button class="btn btn-primary" id="submitBtn" onclick="submitAll()">Upload to Drive ↑</button>
+    </div>
+  </div>
+
+  <!-- Progress -->
+  <div class="upload-progress" id="uploadProgress">
+    <div class="progress-title">Uploading to Google Drive...</div>
+    <div class="progress-bar-wrap"><div class="progress-bar" id="progressBar"></div></div>
+    <div class="progress-list" id="progressList"></div>
+  </div>
+
+  <!-- Success -->
+  <div class="success-screen" id="successScreen">
+    <span class="success-icon">✅</span>
+    <div class="success-heading">All Files Uploaded!</div>
+    <div class="success-body" id="successBody">Your screenshots and notes are now in Google Drive.<br>Osman can see them in your section folder.</div>
+    <div class="drive-link-box" id="driveLinkBox" style="display:none;">
+      <div class="drive-link-label">View your files on Google Drive</div>
+      <a class="drive-link-url" id="driveLink" href="#" target="_blank">Opening Drive folder...</a>
+    </div>
+    <br><button class="reset-btn" onclick="resetAll()">Submit another entry →</button>
+  </div>
+</div>
+
+<script>
+const MAX_PER_CATEGORY = 10;
+
+let S = {
+  num:'', name:'', role:'',
+  files:{ success:[], error:[], fixed:[] },
+  rootFolderId: localStorage.getItem('g9_root_folder') || '',
+  accessToken: null
+};
+
+// ── DRIVE AUTH ────────────────────────────────────────────
+const CLIENT_ID = '756490602425-svsrkmhgp85v5cj17j90g1tq2jkb2dvv.apps.googleusercontent.com';
+const SCOPES = 'https://www.googleapis.com/auth/drive.file';
+let tokenClient;
+
+function handleDriveAuth(){
+  if(S.accessToken){ showManualMode(); return; }
+  if(!tokenClient){
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: CLIENT_ID,
+      scope: SCOPES,
+      callback:(resp)=>{
+        if(resp.error){ alert('Sign in failed: '+resp.error); return; }
+        S.accessToken = resp.access_token;
+        setOAuthConnected();
+      }
+    });
+  }
+  tokenClient.requestAccessToken();
+}
+
+function showManualMode(){
+  const s = document.getElementById('folderSetup');
+  s.classList.toggle('visible');
+  if(S.rootFolderId) document.getElementById('folderIdInput').value = S.rootFolderId;
+}
+
+function saveFolderId(){
+  let input = document.getElementById('folderIdInput').value.trim();
+  if(!input){ alert('Please paste the folder ID or full Drive URL'); return; }
+  // Extract ID if user pasted full URL
+  const match = input.match(/folders\/([a-zA-Z0-9_-]+)/);
+  const id = match ? match[1] : input;
+  S.rootFolderId = id;
+  localStorage.setItem('g9_root_folder', id);
+  document.getElementById('folderSetup').classList.remove('visible');
+  setConnected();
+}
+
+function setConnected(){
+  const btn = document.getElementById('driveBtn');
+  btn.classList.add('connected');
+  btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none"><path d="M4.5 20.25L8.25 13.5H20.25L16.5 20.25H4.5Z" fill="#ffb800"/><path d="M15 3.75L20.25 13.5H8.25L3 3.75H15Z" fill="#ffb800"/><path d="M3 3.75L8.25 13.5L4.5 20.25L0 10.5L3 3.75Z" fill="#ffb800"/></svg> Manual Mode`;
+  document.getElementById('driveStatus').textContent = '✓ Folder ID saved — or click to Sign in with Google for auto-upload';
+  document.getElementById('driveStatus').className = 'drive-status';
+  document.getElementById('driveStatus').style.color = 'var(--fixed)';
+  btn.onclick = showManualMode;
+  document.getElementById('driveWarning').style.display = 'none';
+}
+
+function setOAuthConnected(){
+  const btn = document.getElementById('driveBtn');
+  btn.classList.add('connected');
+  btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none"><path d="M4.5 20.25L8.25 13.5H20.25L16.5 20.25H4.5Z" fill="#00ff88"/><path d="M15 3.75L20.25 13.5H8.25L3 3.75H15Z" fill="#00ff88"/><path d="M3 3.75L8.25 13.5L4.5 20.25L0 10.5L3 3.75Z" fill="#00ff88"/></svg> ✓ Google Drive Connected`;
+  document.getElementById('driveStatus').textContent = '✓ Signed in — files upload directly to Drive automatically';
+  document.getElementById('driveStatus').className = 'drive-status ok';
+  document.getElementById('driveWarning').style.display = 'none';
+  btn.onclick = showManualMode;
+}
+
+// ── MEMBER ────────────────────────────────────────────────
+function selectMember(el, num, name, role){
+  document.querySelectorAll('.member-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  S.num=num; S.name=name; S.role=role;
+  document.getElementById('namingEx').innerHTML =
+    `${num}_[task]_success.png + ${num}_[task]_success.txt<br>` +
+    `${num}_[task]_error.png &nbsp;&nbsp;+ ${num}_[task]_error.txt<br>` +
+    `${num}_[task]_fixed.png &nbsp;&nbsp;+ ${num}_[task]_fixed.txt`;
+}
+
+// ── NAVIGATION ────────────────────────────────────────────
+function goTo(n){
+  if(n===2 && !S.num){ alert('Please select your name first.'); return; }
+  document.querySelectorAll('.form-section').forEach(s => s.classList.remove('active'));
+  document.getElementById('section'+n).classList.add('active');
+  document.querySelectorAll('.step').forEach((s,i)=>{
+    s.classList.remove('active','done');
+    if(i+1<n) s.classList.add('done');
+    if(i+1===n) s.classList.add('active');
+  });
+  if(n===2 && !S.rootFolderId) document.getElementById('driveWarning').style.display='block';
+  if(n===3) buildNoteFields();
+  if(n===5) buildSummary();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ── FILE UPLOAD ───────────────────────────────────────────
+function triggerUpload(id){ document.getElementById('f'+id).click(); }
+function dOver(e,z){ e.preventDefault(); z.classList.add('drag'); }
+function dLeave(z){ z.classList.remove('drag'); }
+function dDrop(e,type){ e.preventDefault();
+  const map={success:'S',error:'E',fixed:'F'};
+  document.getElementById('f'+map[type]).parentElement.classList.remove('drag');
+  addFiles(e.dataTransfer.files, type);
+}
+
+function addFiles(files, type){
+  const existing = S.files[type].length;
+  const toAdd = Array.from(files).slice(0, MAX_PER_CATEGORY - existing);
+  if(toAdd.length < files.length) alert(`Maximum ${MAX_PER_CATEGORY} screenshots per category. Only ${toAdd.length} added.`);
+  S.files[type] = [...S.files[type], ...toAdd];
+  renderFileList(type);
+}
+
+function renderFileList(type){
+  const map={success:'S',error:'E',fixed:'F'};
+  const id = map[type];
+  const list = document.getElementById('fl'+id);
+  const cnt = document.getElementById('cnt'+id);
+  cnt.textContent = `${S.files[type].length} / ${MAX_PER_CATEGORY} uploaded`;
+  list.innerHTML = S.files[type].map(f =>
+    `<div class="file-item"><div class="fdot"></div>${f.name}</div>`
+  ).join('');
+}
+
+// ── BUILD NOTE FIELDS ─────────────────────────────────────
+function buildNoteFields(){
+  buildCategoryNotes('success', 'notesSuccess', 'sh-num',
+    ['What it shows','What was done','Result'],
+    ['e.g. Terraform apply completing with all 12 resources created',
+     'e.g. Ran terraform apply in the terminal',
+     'e.g. AKS cluster, ACR, and resource group now exist in Azure']);
+
+  buildCategoryNotes('error', 'notesError', 'eh-num',
+    ['What it shows','What happened','Why it failed'],
+    ['e.g. Error message shown in the terminal or browser',
+     'e.g. What action caused this error',
+     'e.g. The reason the error occurred']);
+
+  buildCategoryNotes('fixed', 'notesFixed', 'fh-num',
+    ['What it shows','What was done to fix it','Result after fix'],
+    ['e.g. The same task now working correctly',
+     'e.g. The exact fix applied',
+     'e.g. Confirmation that it now works']);
+}
+
+function buildCategoryNotes(type, containerId, numClass, labels, placeholders){
+  const container = document.getElementById(containerId);
+  const files = S.files[type];
+  if(files.length === 0){
+    const msg = type==='success'
+      ? 'No success screenshots uploaded — go back to Step 2 to add some.'
+      : type==='error'
+      ? 'No error screenshots uploaded — leave blank if no errors occurred.'
+      : 'No fixed screenshots uploaded — leave blank if no fixes needed.';
+    container.innerHTML = `<div class="empty-note-hint">${msg}</div>`;
+    return;
+  }
+  container.innerHTML = files.map((file, i) => {
+    const fname = file.name;
+    const noteId = `note_${type}_${i}`;
+    return `
+    <div class="note-card" id="${noteId}">
+      <div class="note-card-header">
+        <div class="note-card-num ${numClass}">${i+1}</div>
+        <div class="note-card-filename">${fname}</div>
+      </div>
+      <div class="note-fields">
+        <div class="field-group">
+          <label class="field-label">${labels[0]}</label>
+          <textarea class="field-textarea" id="${noteId}_f0" placeholder="${placeholders[0]}"></textarea>
+        </div>
+        <div class="field-group">
+          <label class="field-label">${labels[1]}</label>
+          <textarea class="field-textarea" id="${noteId}_f1" placeholder="${placeholders[1]}"></textarea>
+        </div>
+        <div class="field-group">
+          <label class="field-label">${labels[2]}</label>
+          <textarea class="field-textarea" id="${noteId}_f2" placeholder="${placeholders[2]}"></textarea>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── SUMMARY ───────────────────────────────────────────────
+function buildSummary(){
+  const totalScreenshots = S.files.success.length + S.files.error.length + S.files.fixed.length;
+  const totalNotes = totalScreenshots; // one per screenshot
+  document.getElementById('summaryCard').innerHTML = `
+    <div class="summary-title">📋 ${S.name} — Submission Review</div>
+    ${[['Member',S.name],['Role',S.role],['Section',S.num],
+       ['Success screenshots',S.files.success.length+' / '+MAX_PER_CATEGORY],
+       ['Error screenshots',S.files.error.length+' / '+MAX_PER_CATEGORY],
+       ['Fixed screenshots',S.files.fixed.length+' / '+MAX_PER_CATEGORY],
+       ['Total screenshots',totalScreenshots],
+       ['Note files to generate',totalNotes]].map(([k,v])=>
+      `<div class="summary-row"><span class="summary-key">${k}</span><span class="summary-val">${v}</span></div>`).join('')}
+    <div class="summary-row"><span class="summary-key">What you did</span><span class="badge ${g('wd1')}">${gv('wd1')}</span></div>
+    <div class="summary-row"><span class="summary-key">Main challenge</span><span class="badge ${g('ch1')}">${gv('ch1')}</span></div>
+    <div class="summary-row"><span class="summary-key">Do differently</span><span class="badge ${g('df1')}">${gv('df1')}</span></div>
+    <div class="summary-row"><span class="summary-key">Key learnings</span><span class="badge ${g('kl1')}">${gv('kl1')}</span></div>
+    <div class="summary-row"><span class="summary-key">Conclusion</span><span class="badge ${g('cn1')}">${gv('cn1')}</span></div>
+    <div class="summary-row">
+      <span class="summary-key">Upload method</span>
+      <span class="summary-val" style="color:${S.accessToken?'var(--success)':S.rootFolderId?'var(--fixed)':'var(--error)'}">
+        ${S.accessToken?'✓ Auto upload to Drive (OAuth)':S.rootFolderId?'⚠ Manual (folder ID set — download then drag to Drive)':'✗ Not connected — click Connect Google Drive'}
+      </span>
+    </div>`;
+  document.getElementById('submitBtn').textContent = S.accessToken ? '↑ Upload to Drive' : '↓ Download Files';
+}
+
+function g(id){ return document.getElementById(id)&&document.getElementById(id).value?'bs':'bn'; }
+function gv(id){ return document.getElementById(id)&&document.getElementById(id).value?'Written ✓':'Empty'; }
+function vt(id){ const el=document.getElementById(id); return el?el.value.trim():''; }
+
+// ── BUILD NOTE CONTENT ────────────────────────────────────
+function buildScreenshotNotes(){
+  const notes = [];
+  const n = S.num;
+
+  // Success notes — one per screenshot
+  S.files.success.forEach((file, i) => {
+    const id = `note_success_${i}`;
+    const f0=vt(`${id}_f0`), f1=vt(`${id}_f1`), f2=vt(`${id}_f2`);
+    // Generate proper name from note fields
+    const taskName = f0 ? f0.replace(/[^a-zA-Z0-9]/g,'_').toLowerCase().slice(0,30) : `task_${i+1}`;
+    const ext = file.name.match(/\.[^.]+$/)?.[0] || '.png';
+    const newImgName = `${n}_${taskName}_success${ext}`;
+    const newTxtName = `${n}_${taskName}_success.txt`;
+    notes.push({
+      filename: newTxtName,
+      imgFile: file,
+      newImgName: newImgName,
+      type: 'success',
+      content: `Screenshot:    ${newImgName}\nWhat it shows: ${f0||'—'}\nWhat was done: ${f1||'—'}\nResult:        ${f2||'—'}`
+    });
+  });
+
+  // Error notes — one per screenshot
+  S.files.error.forEach((file, i) => {
+    const id = `note_error_${i}`;
+    const f0=vt(`${id}_f0`), f1=vt(`${id}_f1`), f2=vt(`${id}_f2`);
+    const taskName = f0 ? f0.replace(/[^a-zA-Z0-9]/g,'_').toLowerCase().slice(0,30) : `task_${i+1}`;
+    const ext = file.name.match(/\.[^.]+$/)?.[0] || '.png';
+    const newImgName = `${n}_${taskName}_error${ext}`;
+    const newTxtName = `${n}_${taskName}_error.txt`;
+    notes.push({
+      filename: newTxtName,
+      imgFile: file,
+      newImgName: newImgName,
+      type: 'error',
+      content: `Screenshot:    ${newImgName}\nWhat it shows: ${f0||'—'}\nWhat happened: ${f1||'—'}\nWhy it failed: ${f2||'—'}`
+    });
+  });
+
+  // Fixed notes — one per screenshot
+  S.files.fixed.forEach((file, i) => {
+    const id = `note_fixed_${i}`;
+    const f0=vt(`${id}_f0`), f1=vt(`${id}_f1`), f2=vt(`${id}_f2`);
+    const taskName = f0 ? f0.replace(/[^a-zA-Z0-9]/g,'_').toLowerCase().slice(0,30) : `task_${i+1}`;
+    const ext = file.name.match(/\.[^.]+$/)?.[0] || '.png';
+    const newImgName = `${n}_${taskName}_fixed${ext}`;
+    const newTxtName = `${n}_${taskName}_fixed.txt`;
+    notes.push({
+      filename: newTxtName,
+      imgFile: file,
+      newImgName: newImgName,
+      type: 'fixed',
+      content: `Screenshot:    ${newImgName}\nWhat it shows: ${f0||'—'}\nWhat was done: ${f1||'—'}\nResult:        ${f2||'—'}`
+    });
+  });
+
+  return notes;
+}
+
+function buildReflectionNote(){
+  const n = S.num;
+  const wd1=vt('wd1'),wd2=vt('wd2'),wd3=vt('wd3');
+  const ch1=vt('ch1'),ch2=vt('ch2'),ch3=vt('ch3');
+  const df1=vt('df1'),df2=vt('df2');
+  const kl1=vt('kl1'),kl2=vt('kl2'),kl3=vt('kl3');
+  const cn1=vt('cn1'),cn2=vt('cn2');
+  if(!wd1&&!ch1&&!kl1&&!cn1) return null;
+  return {
+    filename: `${n}_${S.name.split(' ')[0].toLowerCase()}_reflection.txt`,
+    type: 'reflection',
+    content:
+`================================================
+GROUP 9 — DMI FINAL PROJECT
+Member:  ${S.name}
+Role:    ${S.role}
+Section: ${n}
+================================================
+
+WHAT I DID
+----------
+${wd1}
+
+Tools and commands used:
+${wd2}
+
+Final outcome:
+${wd3}
+
+================================================
+MAIN CHALLENGE
+--------------
+What was hardest:
+${ch1}
+
+Why it was difficult:
+${ch2}
+
+How I overcame it:
+${ch3}
+
+================================================
+WHAT I WOULD DO DIFFERENTLY
+----------------------------
+If starting again:
+${df1}
+
+What would have saved the most time:
+${df2}
+
+================================================
+KEY LEARNINGS
+-------------
+Most important technical learning:
+${kl1}
+
+Most important teamwork learning:
+${kl2}
+
+Skill I will carry into my career:
+${kl3}
+
+================================================
+CONCLUSION
+----------
+Overall experience:
+${cn1}
+
+How this prepared me for industry:
+${cn2}
+
+================================================`
+  };
+}
+
+// ── SUBMIT ────────────────────────────────────────────────
+async function submitAll(){
+  const screenshotNotes = buildScreenshotNotes();
+  const reflection = buildReflectionNote();
+
+  if(S.files.success.length===0 && S.files.error.length===0 && S.files.fixed.length===0 && !reflection){
+    alert('Nothing to submit. Please upload screenshots or fill in the reflection section.');
+    return;
+  }
+
+  document.getElementById('section5').classList.remove('active');
+  document.getElementById('uploadProgress').classList.add('visible');
+
+  // Build items: screenshot + txt note pairs
+  const items = [];
+  screenshotNotes.forEach(note => {
+    items.push({kind:'screenshot', file: note.imgFile, newName: note.newImgName, type: note.type});
+    items.push({kind:'note', note, type: note.type});
+  });
+  if(reflection) items.push({kind:'note', note: reflection, type:'reflection'});
+
+  const list = document.getElementById('progressList');
+  list.innerHTML = items.map((item,i) => {
+    const name = item.kind==='screenshot' ? item.newName : item.note.filename;
+    const icon = item.type==='success'?'✅':item.type==='error'?'❌':item.type==='fixed'?'🔧':'📝';
+    return `<div class="progress-item" id="pi${i}">
+      <div class="progress-icon">${icon}</div>
+      <div class="progress-name">${name}</div>
+      <div class="progress-status" id="ps${i}">Waiting...</div>
+    </div>`;
+  }).join('');
+
+  if(S.accessToken){
+    await uploadToDrive(items);
+  } else {
+    await saveLocally(items);
+  }
+}
+
+// ── GOOGLE DRIVE UPLOAD ───────────────────────────────────
+async function uploadToDrive(items){
+  const bar = document.getElementById('progressBar');
+  const sectionFolderName = `${S.num}-${S.role.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/-+$/,'')}`;
+
+  try {
+    // Get or create member section folder inside root
+    const memberFolderId = await getOrCreateFolder(sectionFolderName, S.rootFolderId);
+    const successId = await getOrCreateFolder('success', memberFolderId);
+    const errorId   = await getOrCreateFolder('error',   memberFolderId);
+    const fixedId   = await getOrCreateFolder('fixed',   memberFolderId);
+    const folderMap = { success: successId, error: errorId, fixed: fixedId, reflection: memberFolderId };
+
+    for(let i=0; i<items.length; i++){
+      const item = items[i];
+      const ps = document.getElementById(`ps${i}`);
+      ps.textContent='Uploading...'; ps.className='progress-status uploading';
+      try {
+        if(item.kind==='screenshot'){
+          // Rename file and upload
+          const renamedBlob = item.file.slice(0, item.file.size, item.file.type);
+          await uploadFile(renamedBlob, item.newName, item.file.type, folderMap[item.type]);
+        } else {
+          const blob = new Blob([item.note.content],{type:'text/plain'});
+          await uploadFile(blob, item.note.filename, 'text/plain', folderMap[item.type]);
+        }
+        ps.textContent='Uploaded ✓'; ps.className='progress-status done';
+      } catch(e){
+        ps.textContent='Failed ✗'; ps.className='progress-status fail';
+      }
+      bar.style.width=`${Math.round((i+1)/items.length*100)}%`;
+    }
+    showSuccess(true, `https://drive.google.com/drive/folders/${memberFolderId}`);
+  } catch(e){
+    alert('Drive upload error: '+e.message+'\nFalling back to download mode.');
+    await saveLocally(items);
+  }
+}
+
+async function getOrCreateFolder(name, parentId){
+  if(!parentId){ throw new Error('No parent folder ID set. Please connect Google Drive first.'); }
+  const q = `name='${name}' and mimeType='application/vnd.google-apps.folder' and '${parentId}' in parents and trashed=false`;
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name)`,{
+    headers:{ Authorization:`Bearer ${S.accessToken}` }
+  });
+  const data = await res.json();
+  if(data.files && data.files.length > 0) return data.files[0].id;
+  const create = await fetch('https://www.googleapis.com/drive/v3/files',{
+    method:'POST',
+    headers:{ Authorization:`Bearer ${S.accessToken}`, 'Content-Type':'application/json' },
+    body: JSON.stringify({ name, mimeType:'application/vnd.google-apps.folder', parents:[parentId] })
+  });
+  const folder = await create.json();
+  if(!folder.id) throw new Error('Could not create folder: '+name);
+  return folder.id;
+}
+
+async function uploadFile(blob, name, mimeType, folderId){
+  const meta = JSON.stringify({ name, parents:[folderId] });
+  const form = new FormData();
+  form.append('metadata', new Blob([meta],{type:'application/json'}));
+  form.append('file', blob);
+  const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{
+    method:'POST',
+    headers:{ Authorization:`Bearer ${S.accessToken}` },
+    body: form
+  });
+  if(!res.ok) throw new Error(`Upload failed: HTTP ${res.status}`);
+  return res.json();
+}
+
+async function saveLocally(items){
+  const bar = document.getElementById('progressBar');
+  for(let i=0; i<items.length; i++){
+    const item = items[i];
+    const ps = document.getElementById(`ps${i}`);
+    ps.textContent='Downloading...'; ps.className='progress-status uploading';
+    await new Promise(r=>setTimeout(r,300));
+
+    if(item.kind==='note'){
+      // Download .txt file
+      const blob = new Blob([item.note.content],{type:'text/plain'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href=url; a.download=item.note.filename; a.click();
+      URL.revokeObjectURL(url);
+      ps.textContent='Downloaded ✓'; ps.className='progress-status done';
+    } else {
+      // Download screenshot with new proper name
+      const url = URL.createObjectURL(item.file);
+      const a = document.createElement('a');
+      a.href=url; a.download=item.newName; a.click();
+      URL.revokeObjectURL(url);
+      ps.textContent='Downloaded ✓'; ps.className='progress-status done';
+    }
+
+    bar.style.width=`${Math.round((i+1)/items.length*100)}%`;
+    await new Promise(r=>setTimeout(r,400));
+  }
+  showSuccess();
+}
+
+function showSuccess(direct=false, driveUrl=null){
+  document.getElementById('uploadProgress').classList.remove('visible');
+  const screen = document.getElementById('successScreen');
+  screen.classList.add('visible');
+  if(direct){
+    document.getElementById('successBody').innerHTML =
+      `✅ All files uploaded directly to Google Drive.<br>Screenshots and notes are in your section folder — Osman can see them now.`;
+  } else {
+    document.getElementById('successBody').innerHTML =
+      `✅ All files downloaded to your computer with correct names.<br><br>Now drag everything into your section folder on Google Drive:<br>• Screenshots → into success / error / fixed subfolder<br>• .txt notes → next to their matching screenshot<br>• reflection.txt → in your main section folder`;
+  }
+  const url = driveUrl || (S.rootFolderId ? `https://drive.google.com/drive/folders/${S.rootFolderId}` : null);
+  if(url){
+    document.getElementById('driveLinkBox').style.display='inline-block';
+    document.getElementById('driveLink').href=url;
+    document.getElementById('driveLink').textContent=url;
+  }
+}
+
+// ── RESET ─────────────────────────────────────────────────
+function resetAll(){
+  S.num=''; S.name=''; S.role='';
+  S.files={success:[],error:[],fixed:[]};
+  document.querySelectorAll('.member-card').forEach(c=>c.classList.remove('selected'));
+  document.querySelectorAll('.field-textarea').forEach(t=>t.value='');
+  ['S','E','F'].forEach(id=>{
+    document.getElementById('fl'+id).innerHTML='';
+    document.getElementById('cnt'+id).textContent='0 / 10 uploaded';
+  });
+  ['notesSuccess','notesError','notesFixed'].forEach(id=>{
+    document.getElementById(id).innerHTML='<div class="empty-note-hint">No screenshots uploaded.</div>';
+  });
+  document.getElementById('progressBar').style.width='0%';
+  document.getElementById('progressList').innerHTML='';
+  document.getElementById('uploadProgress').classList.remove('visible');
+  document.getElementById('successScreen').classList.remove('visible');
+  document.getElementById('driveLinkBox').style.display='none';
+  document.querySelectorAll('.step').forEach((s,i)=>{
+    s.classList.remove('active','done');
+    if(i===0) s.classList.add('active');
+  });
+  document.getElementById('section1').classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+window.addEventListener('load',()=>{ if(S.rootFolderId) setConnected(); });
+</script>
+</body>
+</html>
