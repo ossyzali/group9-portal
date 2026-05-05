@@ -446,7 +446,7 @@ function goTo(n){
     if(i+1<n) s.classList.add('done');
     if(i+1===n) s.classList.add('active');
   });
-  if(n===2 && !S.rootFolderId) document.getElementById('driveWarning').style.display='block';
+  if(n===2) document.getElementById('driveWarning').style.display='none';
   if(n===3) buildNoteFields();
   if(n===5) buildSummary();
   window.scrollTo({top:0,behavior:'smooth'});
@@ -473,26 +473,64 @@ function addFiles(files, type){
 function removeFile(type, index){
   S.files[type].splice(index, 1);
   renderFileList(type);
-  // Rebuild note fields if notes step has already been rendered
   const notesEl = document.getElementById('notesSuccess');
   if(notesEl && notesEl.children.length > 0 && !notesEl.querySelector('.empty-note-hint')){
     buildNoteFields();
   }
 }
 
+function getTaskInput(type, index){
+  const el = document.getElementById(`taskname_${type}_${index}`);
+  if(!el) return '';
+  return el.value.trim().replace(/[^a-zA-Z0-9]+/g,'_').replace(/^_+|_+$/g,'').toLowerCase().slice(0,40);
+}
+
 function renderFileList(type){
   const map={success:'S',error:'E',fixed:'F'};
+  const colorMap={success:'#00ff88',error:'#ff3b5c',fixed:'#ffb800'};
   const id = map[type];
   const list = document.getElementById('fl'+id);
   const cnt = document.getElementById('cnt'+id);
   cnt.textContent = `${S.files[type].length} / ${MAX_PER_CATEGORY} uploaded`;
-  list.innerHTML = S.files[type].map((f, i) =>
-    `<div class="file-item">
-      <div class="fdot"></div>
-      <span style="flex:1;word-break:break-all;">${f.name}</span>
-      <button onclick="removeFile('${type}',${i})" title="Remove this screenshot" style="background:var(--error);border:none;color:#fff;border-radius:4px;padding:2px 8px;font-size:10px;cursor:pointer;flex-shrink:0;font-family:'Syne',sans-serif;font-weight:700;">✕ Remove</button>
-    </div>`
-  ).join('');
+  list.innerHTML = S.files[type].map((f, i) => `
+    <div style="background:var(--surface2);border-radius:6px;padding:8px 10px;margin-top:6px;border:1px solid var(--border);">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <div class="fdot"></div>
+        <span style="flex:1;font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--muted);word-break:break-all;">${f.name}</span>
+        <button onclick="removeFile('${type}',${i})" title="Remove" style="background:var(--error);border:none;color:#fff;border-radius:4px;padding:2px 8px;font-size:10px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;flex-shrink:0;">✕</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span style="font-size:10px;font-family:'JetBrains Mono',monospace;color:${colorMap[type]};white-space:nowrap;">${S.num}_</span>
+        <input
+          id="taskname_${type}_${i}"
+          type="text"
+          placeholder="name_this_screenshot  e.g. terraform_init"
+          style="flex:1;background:var(--bg);border:1px solid ${colorMap[type]};border-radius:4px;padding:4px 8px;font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--text);outline:none;"
+          oninput="updateNamingPreview('${type}',${i})"
+        >
+        <span style="font-size:10px;font-family:'JetBrains Mono',monospace;color:${colorMap[type]};white-space:nowrap;">_${type}.png</span>
+      </div>
+      <div id="preview_${type}_${i}" style="font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--muted);margin-top:4px;padding-left:2px;">
+        → Final name: ${S.num}_[type_a_name_above]_${type}.png
+      </div>
+    </div>
+  `).join('');
+}
+
+function updateNamingPreview(type, index){
+  const raw = document.getElementById(`taskname_${type}_${index}`).value.trim();
+  const clean = raw.replace(/[^a-zA-Z0-9]+/g,'_').replace(/^_+|_+$/g,'').toLowerCase().slice(0,40);
+  const preview = document.getElementById(`preview_${type}_${index}`);
+  if(preview){
+    const ext = S.files[type][index]?.name.match(/\.[^.]+$/)?.[0] || '.png';
+    if(clean){
+      preview.textContent = `→ Final name: ${S.num}_${clean}_${type}${ext}`;
+      preview.style.color = 'var(--accent)';
+    } else {
+      preview.textContent = `→ Final name: ${S.num}_[type_a_name_above]_${type}${ext}`;
+      preview.style.color = 'var(--muted)';
+    }
+  }
 }
 
 // ── BUILD NOTE FIELDS ─────────────────────────────────────
@@ -530,12 +568,15 @@ function buildCategoryNotes(type, containerId, numClass, labels, placeholders){
   }
   container.innerHTML = files.map((file, i) => {
     const fname = file.name;
+    const taskName = getTaskInput(type, i) || '[task_name]';
+    const ext = file.name.match(/\.[^.]+$/)?.[0] || '.png';
+    const finalName = `${S.num}_${taskName}_${type}${ext}`;
     const noteId = `note_${type}_${i}`;
     return `
     <div class="note-card" id="${noteId}">
       <div class="note-card-header">
         <div class="note-card-num ${numClass}">${i+1}</div>
-        <div class="note-card-filename">${fname}</div>
+        <div class="note-card-filename" title="Original: ${fname}">📎 ${finalName}</div>
       </div>
       <div class="note-fields">
         <div class="field-group">
@@ -589,68 +630,44 @@ function buildScreenshotNotes(){
   const notes = [];
   const n = S.num;
 
-  // Helper — extract clean task name from original filename
-  // e.g. "terraform_init.png" → "terraform_init"
-  // e.g. "Screenshot From 2026-05-04 09-40-20.png" → "screenshot_2026-05-04"
-  // e.g. "1234567.png" → "task_1"
-  function getTaskName(filename, fallback){
-    // Remove extension
-    let base = filename.replace(/\.[^.]+$/, '');
-    // Clean up spaces and special chars to underscores
-    base = base.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '').toLowerCase();
-    // If it's just digits or too short/generic, use fallback
-    if(!base || /^\d+$/.test(base) || base.length < 3) return fallback;
-    // Trim to 40 chars
-    return base.slice(0, 40);
-  }
-
-  // Success notes — one per screenshot
+  // Success notes
   S.files.success.forEach((file, i) => {
     const id = `note_success_${i}`;
     const f0=vt(`${id}_f0`), f1=vt(`${id}_f1`), f2=vt(`${id}_f2`);
     const ext = file.name.match(/\.[^.]+$/)?.[0] || '.png';
-    const taskName = getTaskName(file.name, `task_${i+1}`);
+    const taskName = getTaskInput('success', i) || `task_${i+1}`;
     const newImgName = `${n}_${taskName}_success${ext}`;
     const newTxtName = `${n}_${taskName}_success.txt`;
     notes.push({
-      filename: newTxtName,
-      imgFile: file,
-      newImgName: newImgName,
-      type: 'success',
+      filename: newTxtName, imgFile: file, newImgName, type: 'success',
       content: `Screenshot:    ${newImgName}\nWhat it shows: ${f0||'—'}\nWhat was done: ${f1||'—'}\nResult:        ${f2||'—'}`
     });
   });
 
-  // Error notes — one per screenshot
+  // Error notes
   S.files.error.forEach((file, i) => {
     const id = `note_error_${i}`;
     const f0=vt(`${id}_f0`), f1=vt(`${id}_f1`), f2=vt(`${id}_f2`);
     const ext = file.name.match(/\.[^.]+$/)?.[0] || '.png';
-    const taskName = getTaskName(file.name, `task_${i+1}`);
+    const taskName = getTaskInput('error', i) || `task_${i+1}`;
     const newImgName = `${n}_${taskName}_error${ext}`;
     const newTxtName = `${n}_${taskName}_error.txt`;
     notes.push({
-      filename: newTxtName,
-      imgFile: file,
-      newImgName: newImgName,
-      type: 'error',
+      filename: newTxtName, imgFile: file, newImgName, type: 'error',
       content: `Screenshot:    ${newImgName}\nWhat it shows: ${f0||'—'}\nWhat happened: ${f1||'—'}\nWhy it failed: ${f2||'—'}`
     });
   });
 
-  // Fixed notes — one per screenshot
+  // Fixed notes
   S.files.fixed.forEach((file, i) => {
     const id = `note_fixed_${i}`;
     const f0=vt(`${id}_f0`), f1=vt(`${id}_f1`), f2=vt(`${id}_f2`);
     const ext = file.name.match(/\.[^.]+$/)?.[0] || '.png';
-    const taskName = getTaskName(file.name, `task_${i+1}`);
+    const taskName = getTaskInput('fixed', i) || `task_${i+1}`;
     const newImgName = `${n}_${taskName}_fixed${ext}`;
     const newTxtName = `${n}_${taskName}_fixed.txt`;
     notes.push({
-      filename: newTxtName,
-      imgFile: file,
-      newImgName: newImgName,
-      type: 'fixed',
+      filename: newTxtName, imgFile: file, newImgName, type: 'fixed',
       content: `Screenshot:    ${newImgName}\nWhat it shows: ${f0||'—'}\nWhat was done: ${f1||'—'}\nResult:        ${f2||'—'}`
     });
   });
