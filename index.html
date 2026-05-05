@@ -404,6 +404,21 @@ const CLIENT_ID = '756490602425-svsrkmhgp85v5cj17j90g1tq2jkb2dvv.apps.googleuser
 const SCOPES = 'https://www.googleapis.com/auth/drive.file';
 let tokenClient;
 
+// Auto-refresh token before it expires
+let tokenRefreshTimer = null;
+
+function scheduleTokenRefresh(){
+  if(tokenRefreshTimer) clearTimeout(tokenRefreshTimer);
+  // Refresh after 50 minutes (token lasts 60 min — refresh early)
+  tokenRefreshTimer = setTimeout(()=>{ silentRefresh(); }, 50 * 60 * 1000);
+}
+
+function silentRefresh(){
+  if(!tokenClient) return;
+  // Request new token silently — no popup if already signed in
+  tokenClient.requestAccessToken({ prompt:'' });
+}
+
 function handleDriveAuth(){
   if(S.accessToken){ showManualMode(); return; }
   if(!tokenClient){
@@ -413,11 +428,30 @@ function handleDriveAuth(){
       callback:(resp)=>{
         if(resp.error){ alert('Sign in failed: '+resp.error); return; }
         S.accessToken = resp.access_token;
+        // Save token expiry time
+        localStorage.setItem('g9_token', resp.access_token);
+        localStorage.setItem('g9_token_time', Date.now().toString());
         setOAuthConnected();
+        scheduleTokenRefresh();
       }
     });
   }
-  tokenClient.requestAccessToken();
+  tokenClient.requestAccessToken({ prompt: S.accessToken ? '' : 'select_account' });
+}
+
+function tryRestoreSession(){
+  // Try to restore previous session silently on page load
+  const savedToken = localStorage.getItem('g9_token');
+  const savedTime = parseInt(localStorage.getItem('g9_token_time') || '0');
+  const elapsed = Date.now() - savedTime;
+  // If token was saved less than 55 minutes ago, restore it
+  if(savedToken && elapsed < 55 * 60 * 1000){
+    S.accessToken = savedToken;
+    setOAuthConnected();
+    // Schedule refresh for remaining time
+    const remaining = (55 * 60 * 1000) - elapsed;
+    tokenRefreshTimer = setTimeout(()=>{ silentRefresh(); }, remaining);
+  }
 }
 
 function showManualMode(){
@@ -456,7 +490,15 @@ function setOAuthConnected(){
   document.getElementById('driveStatus').textContent = '✓ Signed in — files upload directly to Drive automatically';
   document.getElementById('driveStatus').className = 'drive-status ok';
   document.getElementById('driveWarning').style.display = 'none';
-  btn.onclick = showManualMode;
+  btn.onclick = ()=>{
+    if(confirm('Disconnect Google Drive?')){
+      S.accessToken = null;
+      localStorage.removeItem('g9_token');
+      localStorage.removeItem('g9_token_time');
+      if(tokenRefreshTimer) clearTimeout(tokenRefreshTimer);
+      location.reload();
+    }
+  };
 }
 
 // ── MEMBER ────────────────────────────────────────────────
@@ -927,7 +969,11 @@ function resetAll(){
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
-window.addEventListener('load',()=>{ if(S.rootFolderId) setConnected(); });
+window.addEventListener('load',()=>{
+  if(S.rootFolderId) setConnected();
+  // Try to restore previous Google sign-in session
+  setTimeout(()=>{ tryRestoreSession(); }, 1000);
+});
 </script>
 </body>
 </html>
