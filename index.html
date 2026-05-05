@@ -464,13 +464,16 @@ function dDrop(e,type){ e.preventDefault();
 }
 
 function addFiles(files, type){
+  const map={success:'S',error:'E',fixed:'F'};
   const existing = S.files[type].length;
   const toAdd = Array.from(files).slice(0, MAX_PER_CATEGORY - existing);
   if(toAdd.length < files.length) alert(`Maximum ${MAX_PER_CATEGORY} screenshots per category. Only ${toAdd.length} added.`);
   S.files[type] = [...S.files[type], ...toAdd];
-  // Initialise empty task name slots for new files
   while(S.taskNames[type].length < S.files[type].length) S.taskNames[type].push('');
   renderFileList(type);
+  // Clear the input value so the same file can be selected again after removal
+  const input = document.getElementById('f'+map[type]);
+  if(input) input.value = '';
 }
 
 function removeFile(type, index){
@@ -856,9 +859,23 @@ async function submitAll(){
 }
 
 // ── APPS SCRIPT UPLOAD ────────────────────────────────────
+const FOLDER_NAMES = {
+  '01': '01-project-lead-ikedimma',
+  '02': '02-git-repo-benjamin',
+  '03': '03-local-build-gift',
+  '04': '04-docker-acr-duru-juliet',
+  '05': '05-terraform-pradeep',
+  '06': '06-kubernetes-oladayo',
+  '07': '07-helm-angela',
+  '08': '08-azure-pipelines-ubani',
+  '09': '09-genai-olanrewaju',
+  '10': '10-microservices-yinusa',
+  '11': '11-monitoring-qa-osman'
+};
+
 async function uploadViaAppsScript(items){
   const bar = document.getElementById('progressBar');
-  const sectionFolder = `${S.num}-${S.role.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/-+$/,'')}`;
+  const sectionFolder = FOLDER_NAMES[S.num] || `${S.num}-unknown`;
   const driveUrl = 'https://drive.google.com/drive/folders/1K3O7dVVzsmGyoa3ZfdNDiNIkuKA0ADCN';
   let allOk = true;
 
