@@ -395,6 +395,7 @@ const MAX_PER_CATEGORY = 10;
 let S = {
   num:'', name:'', role:'',
   files:{ success:[], error:[], fixed:[] },
+  taskNames:{ success:[], error:[], fixed:[] },
   rootFolderId: localStorage.getItem('g9_root_folder') || '',
   accessToken: null
 };
@@ -467,11 +468,14 @@ function addFiles(files, type){
   const toAdd = Array.from(files).slice(0, MAX_PER_CATEGORY - existing);
   if(toAdd.length < files.length) alert(`Maximum ${MAX_PER_CATEGORY} screenshots per category. Only ${toAdd.length} added.`);
   S.files[type] = [...S.files[type], ...toAdd];
+  // Initialise empty task name slots for new files
+  while(S.taskNames[type].length < S.files[type].length) S.taskNames[type].push('');
   renderFileList(type);
 }
 
 function removeFile(type, index){
   S.files[type].splice(index, 1);
+  S.taskNames[type].splice(index, 1);
   renderFileList(type);
   const notesEl = document.getElementById('notesSuccess');
   if(notesEl && notesEl.children.length > 0 && !notesEl.querySelector('.empty-note-hint')){
@@ -479,7 +483,15 @@ function removeFile(type, index){
   }
 }
 
+function saveTaskName(type, index){
+  const el = document.getElementById(`taskname_${type}_${index}`);
+  if(el) S.taskNames[type][index] = el.value;
+}
+
 function getTaskInput(type, index){
+  // Always read from saved state first, fall back to DOM
+  const saved = S.taskNames[type]?.[index] || '';
+  if(saved) return saved.trim().replace(/[^a-zA-Z0-9]+/g,'_').replace(/^_+|_+$/g,'').toLowerCase().slice(0,40);
   const el = document.getElementById(`taskname_${type}_${index}`);
   if(!el) return '';
   return el.value.trim().replace(/[^a-zA-Z0-9]+/g,'_').replace(/^_+|_+$/g,'').toLowerCase().slice(0,40);
@@ -492,12 +504,17 @@ function renderFileList(type){
   const list = document.getElementById('fl'+id);
   const cnt = document.getElementById('cnt'+id);
   cnt.textContent = `${S.files[type].length} / ${MAX_PER_CATEGORY} uploaded`;
-  list.innerHTML = S.files[type].map((f, i) => `
+  list.innerHTML = S.files[type].map((f, i) => {
+    const savedName = (S.taskNames[type][i] || '').trim().replace(/[^a-zA-Z0-9]+/g,'_').replace(/^_+|_+$/g,'').toLowerCase().slice(0,40);
+    const ext = f.name.match(/\.[^.]+$/)?.[0] || '.png';
+    const finalName = savedName ? `${S.num}_${savedName}_${type}${ext}` : null;
+    const confirmed = savedName.length > 0;
+    return `
     <div style="background:var(--surface2);border-radius:6px;padding:8px 10px;margin-top:6px;border:1px solid var(--border);" onclick="event.stopPropagation()">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
         <div class="fdot"></div>
         <span style="flex:1;font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--muted);word-break:break-all;">${f.name}</span>
-        <button onclick="event.stopPropagation();removeFile('${type}',${i})" title="Remove" style="background:var(--error);border:none;color:#fff;border-radius:4px;padding:2px 8px;font-size:10px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;flex-shrink:0;">✕</button>
+        <button onclick="event.stopPropagation();removeFile('${type}',${i})" style="background:var(--error);border:none;color:#fff;border-radius:4px;padding:2px 8px;font-size:10px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;flex-shrink:0;">✕</button>
       </div>
       <div style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--muted);margin-bottom:4px;">Task name for this screenshot:</div>
       <div style="display:flex;align-items:center;gap:4px;">
@@ -505,25 +522,27 @@ function renderFileList(type){
         <input
           id="taskname_${type}_${i}"
           type="text"
+          value="${savedName}"
           placeholder="e.g. terraform_init"
           onclick="event.stopPropagation()"
           onkeydown="if(event.key==='Enter'){event.preventDefault();confirmTaskName('${type}',${i});}"
-          oninput="updateNamingPreview('${type}',${i})"
-          style="flex:1;background:var(--bg);border:1px solid ${colorMap[type]};border-radius:4px;padding:5px 8px;font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--text);outline:none;"
+          oninput="S.taskNames['${type}'][${i}]=this.value;updateNamingPreview('${type}',${i})"
+          ${confirmed?'readonly':''}
+          style="flex:1;background:${confirmed?'rgba(0,255,136,0.08)':'var(--bg)'};border:1px solid ${confirmed?'#00ff88':colorMap[type]};border-radius:4px;padding:5px 8px;font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--text);outline:none;"
         >
         <span style="font-size:11px;font-family:'JetBrains Mono',monospace;color:${colorMap[type]};white-space:nowrap;">_${type}.png</span>
         <button
-          onclick="event.stopPropagation();confirmTaskName('${type}',${i})"
           id="confirm_${type}_${i}"
-          style="background:${colorMap[type]};border:none;color:#000;border-radius:4px;padding:5px 10px;font-size:11px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;flex-shrink:0;white-space:nowrap;">
-          ✓ OK
+          onclick="event.stopPropagation();${confirmed?`unlockTaskName('${type}',${i})`:`confirmTaskName('${type}',${i})`}"
+          style="background:${confirmed?'#00ff88':colorMap[type]};border:none;color:#000;border-radius:4px;padding:5px 10px;font-size:11px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;flex-shrink:0;white-space:nowrap;">
+          ${confirmed?'✓ Named':'✓ OK'}
         </button>
       </div>
-      <div id="preview_${type}_${i}" style="font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--muted);margin-top:4px;">
-        → Type a name above then click OK or press Enter
+      <div id="preview_${type}_${i}" style="font-size:9px;font-family:'JetBrains Mono',monospace;color:${confirmed?'#00ff88':'var(--muted)'};margin-top:4px;">
+        ${confirmed ? `✓ Final name: ${finalName}` : '→ Type a name above then click OK or press Enter'}
       </div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 }
 
 function confirmTaskName(type, index){
@@ -535,23 +554,21 @@ function confirmTaskName(type, index){
   const clean = raw.replace(/[^a-zA-Z0-9]+/g,'_').replace(/^_+|_+$/g,'').toLowerCase().slice(0,40);
   if(!clean){
     input.style.borderColor = 'var(--error)';
-    preview.textContent = '⚠ Please type a name first — e.g. terraform_init';
-    preview.style.color = 'var(--error)';
+    if(preview){ preview.textContent = '⚠ Please type a name first — e.g. terraform_init'; preview.style.color='var(--error)'; }
     input.focus();
     return;
   }
+  // Save to state
+  S.taskNames[type][index] = clean;
   const ext = S.files[type][index]?.name.match(/\.[^.]+$/)?.[0] || '.png';
   const finalName = `${S.num}_${clean}_${type}${ext}`;
-  // Lock the input and show confirmed state
+  // Update UI
   input.value = clean;
   input.style.borderColor = '#00ff88';
   input.style.background = 'rgba(0,255,136,0.08)';
   input.readOnly = true;
-  btn.textContent = '✓ Named';
-  btn.style.background = '#00ff88';
-  btn.onclick = (e)=>{ e.stopPropagation(); unlockTaskName(type, index); };
-  preview.textContent = `✓ Final name: ${finalName}`;
-  preview.style.color = '#00ff88';
+  if(btn){ btn.textContent='✓ Named'; btn.style.background='#00ff88'; btn.onclick=(e)=>{e.stopPropagation();unlockTaskName(type,index);}; }
+  if(preview){ preview.textContent=`✓ Final name: ${finalName}`; preview.style.color='#00ff88'; }
 }
 
 function unlockTaskName(type, index){
@@ -559,12 +576,14 @@ function unlockTaskName(type, index){
   const btn = document.getElementById(`confirm_${type}_${index}`);
   const colorMap={success:'#00ff88',error:'#ff3b5c',fixed:'#ffb800'};
   if(!input) return;
+  // Clear saved name so user can retype
+  S.taskNames[type][index] = '';
   input.readOnly = false;
   input.style.borderColor = colorMap[type];
   input.style.background = 'var(--bg)';
-  btn.textContent = '✓ OK';
-  btn.onclick = (e)=>{ e.stopPropagation(); confirmTaskName(type, index); };
+  if(btn){ btn.textContent='✓ OK'; btn.onclick=(e)=>{e.stopPropagation();confirmTaskName(type,index);}; }
   input.focus();
+  input.select();
 }
 
 function updateNamingPreview(type, index){
@@ -934,6 +953,7 @@ function showSuccess(allOk=true, driveUrl=null){
 function resetAll(){
   S.num=''; S.name=''; S.role='';
   S.files={success:[],error:[],fixed:[]};
+  S.taskNames={success:[],error:[],fixed:[]};
   document.querySelectorAll('.member-card').forEach(c=>c.classList.remove('selected'));
   document.querySelectorAll('.field-textarea').forEach(t=>t.value='');
   ['S','E','F'].forEach(id=>{
@@ -952,6 +972,7 @@ function resetAll(){
     s.classList.remove('active','done');
     if(i===0) s.classList.add('active');
   });
+  document.querySelectorAll('.form-section').forEach(s=>s.classList.remove('active'));
   document.getElementById('section1').classList.add('active');
   window.scrollTo({top:0,behavior:'smooth'});
 }
