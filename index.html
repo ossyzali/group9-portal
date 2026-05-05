@@ -74,7 +74,7 @@ h1{font-size:clamp(22px,3vw,38px);font-weight:800;background:linear-gradient(135
 .fz .zone-count{color:var(--fixed);}
 .file-input{display:none;}
 .file-list{margin-top:8px;display:flex;flex-direction:column;gap:4px;text-align:left;}
-.file-item{background:var(--surface2);border-radius:5px;padding:5px 7px;font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--text);display:flex;align-items:center;gap:5px;word-break:break-all;}
+.file-item{background:var(--surface2);border-radius:5px;padding:5px 7px;font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--text);display:flex;align-items:center;gap:8px;}
 .fdot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
 .sz .fdot{background:var(--success);}
 .ez .fdot{background:var(--error);}
@@ -470,14 +470,28 @@ function addFiles(files, type){
   renderFileList(type);
 }
 
+function removeFile(type, index){
+  S.files[type].splice(index, 1);
+  renderFileList(type);
+  // Rebuild note fields if notes step has already been rendered
+  const notesEl = document.getElementById('notesSuccess');
+  if(notesEl && notesEl.children.length > 0 && !notesEl.querySelector('.empty-note-hint')){
+    buildNoteFields();
+  }
+}
+
 function renderFileList(type){
   const map={success:'S',error:'E',fixed:'F'};
   const id = map[type];
   const list = document.getElementById('fl'+id);
   const cnt = document.getElementById('cnt'+id);
   cnt.textContent = `${S.files[type].length} / ${MAX_PER_CATEGORY} uploaded`;
-  list.innerHTML = S.files[type].map(f =>
-    `<div class="file-item"><div class="fdot"></div>${f.name}</div>`
+  list.innerHTML = S.files[type].map((f, i) =>
+    `<div class="file-item">
+      <div class="fdot"></div>
+      <span style="flex:1;word-break:break-all;">${f.name}</span>
+      <button onclick="removeFile('${type}',${i})" title="Remove this screenshot" style="background:var(--error);border:none;color:#fff;border-radius:4px;padding:2px 8px;font-size:10px;cursor:pointer;flex-shrink:0;font-family:'Syne',sans-serif;font-weight:700;">✕ Remove</button>
+    </div>`
   ).join('');
 }
 
