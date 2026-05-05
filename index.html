@@ -499,27 +499,76 @@ function renderFileList(type){
         <span style="flex:1;font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--muted);word-break:break-all;">${f.name}</span>
         <button onclick="event.stopPropagation();removeFile('${type}',${i})" title="Remove" style="background:var(--error);border:none;color:#fff;border-radius:4px;padding:2px 8px;font-size:10px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;flex-shrink:0;">✕</button>
       </div>
-      <div style="display:flex;align-items:center;gap:6px;">
-        <span style="font-size:10px;font-family:'JetBrains Mono',monospace;color:${colorMap[type]};white-space:nowrap;">${S.num}_</span>
+      <div style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--muted);margin-bottom:4px;">Task name for this screenshot:</div>
+      <div style="display:flex;align-items:center;gap:4px;">
+        <span style="font-size:11px;font-family:'JetBrains Mono',monospace;color:${colorMap[type]};white-space:nowrap;">${S.num}_</span>
         <input
           id="taskname_${type}_${i}"
           type="text"
-          placeholder="name_this_screenshot  e.g. terraform_init"
+          placeholder="e.g. terraform_init"
           onclick="event.stopPropagation()"
-          style="flex:1;background:var(--bg);border:1px solid ${colorMap[type]};border-radius:4px;padding:4px 8px;font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--text);outline:none;"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();confirmTaskName('${type}',${i});}"
           oninput="updateNamingPreview('${type}',${i})"
+          style="flex:1;background:var(--bg);border:1px solid ${colorMap[type]};border-radius:4px;padding:5px 8px;font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--text);outline:none;"
         >
-        <span style="font-size:10px;font-family:'JetBrains Mono',monospace;color:${colorMap[type]};white-space:nowrap;">_${type}.png</span>
+        <span style="font-size:11px;font-family:'JetBrains Mono',monospace;color:${colorMap[type]};white-space:nowrap;">_${type}.png</span>
+        <button
+          onclick="event.stopPropagation();confirmTaskName('${type}',${i})"
+          id="confirm_${type}_${i}"
+          style="background:${colorMap[type]};border:none;color:#000;border-radius:4px;padding:5px 10px;font-size:11px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;flex-shrink:0;white-space:nowrap;">
+          ✓ OK
+        </button>
       </div>
-      <div id="preview_${type}_${i}" style="font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--muted);margin-top:4px;padding-left:2px;">
-        → Final name: ${S.num}_[type_a_name_above]_${type}.png
+      <div id="preview_${type}_${i}" style="font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--muted);margin-top:4px;">
+        → Type a name above then click OK or press Enter
       </div>
     </div>
   `).join('');
 }
 
+function confirmTaskName(type, index){
+  const input = document.getElementById(`taskname_${type}_${index}`);
+  const preview = document.getElementById(`preview_${type}_${index}`);
+  const btn = document.getElementById(`confirm_${type}_${index}`);
+  if(!input) return;
+  const raw = input.value.trim();
+  const clean = raw.replace(/[^a-zA-Z0-9]+/g,'_').replace(/^_+|_+$/g,'').toLowerCase().slice(0,40);
+  if(!clean){
+    input.style.borderColor = 'var(--error)';
+    preview.textContent = '⚠ Please type a name first — e.g. terraform_init';
+    preview.style.color = 'var(--error)';
+    input.focus();
+    return;
+  }
+  const ext = S.files[type][index]?.name.match(/\.[^.]+$/)?.[0] || '.png';
+  const finalName = `${S.num}_${clean}_${type}${ext}`;
+  // Lock the input and show confirmed state
+  input.value = clean;
+  input.style.borderColor = '#00ff88';
+  input.style.background = 'rgba(0,255,136,0.08)';
+  input.readOnly = true;
+  btn.textContent = '✓ Named';
+  btn.style.background = '#00ff88';
+  btn.onclick = (e)=>{ e.stopPropagation(); unlockTaskName(type, index); };
+  preview.textContent = `✓ Final name: ${finalName}`;
+  preview.style.color = '#00ff88';
+}
+
+function unlockTaskName(type, index){
+  const input = document.getElementById(`taskname_${type}_${index}`);
+  const btn = document.getElementById(`confirm_${type}_${index}`);
+  const colorMap={success:'#00ff88',error:'#ff3b5c',fixed:'#ffb800'};
+  if(!input) return;
+  input.readOnly = false;
+  input.style.borderColor = colorMap[type];
+  input.style.background = 'var(--bg)';
+  btn.textContent = '✓ OK';
+  btn.onclick = (e)=>{ e.stopPropagation(); confirmTaskName(type, index); };
+  input.focus();
+}
+
 function updateNamingPreview(type, index){
-  const raw = document.getElementById(`taskname_${type}_${index}`).value.trim();
+  const raw = document.getElementById(`taskname_${type}_${index}`)?.value.trim() || '';
   const clean = raw.replace(/[^a-zA-Z0-9]+/g,'_').replace(/^_+|_+$/g,'').toLowerCase().slice(0,40);
   const preview = document.getElementById(`preview_${type}_${index}`);
   if(preview){
@@ -528,7 +577,7 @@ function updateNamingPreview(type, index){
       preview.textContent = `→ Final name: ${S.num}_${clean}_${type}${ext}`;
       preview.style.color = 'var(--accent)';
     } else {
-      preview.textContent = `→ Final name: ${S.num}_[type_a_name_above]_${type}${ext}`;
+      preview.textContent = '→ Type a name above then click OK or press Enter';
       preview.style.color = 'var(--muted)';
     }
   }
