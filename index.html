@@ -575,13 +575,27 @@ function buildScreenshotNotes(){
   const notes = [];
   const n = S.num;
 
+  // Helper — extract clean task name from original filename
+  // e.g. "terraform_init.png" → "terraform_init"
+  // e.g. "Screenshot From 2026-05-04 09-40-20.png" → "screenshot_2026-05-04"
+  // e.g. "1234567.png" → "task_1"
+  function getTaskName(filename, fallback){
+    // Remove extension
+    let base = filename.replace(/\.[^.]+$/, '');
+    // Clean up spaces and special chars to underscores
+    base = base.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '').toLowerCase();
+    // If it's just digits or too short/generic, use fallback
+    if(!base || /^\d+$/.test(base) || base.length < 3) return fallback;
+    // Trim to 40 chars
+    return base.slice(0, 40);
+  }
+
   // Success notes — one per screenshot
   S.files.success.forEach((file, i) => {
     const id = `note_success_${i}`;
     const f0=vt(`${id}_f0`), f1=vt(`${id}_f1`), f2=vt(`${id}_f2`);
-    // Generate proper name from note fields
-    const taskName = f0 ? f0.replace(/[^a-zA-Z0-9]/g,'_').toLowerCase().slice(0,30) : `task_${i+1}`;
     const ext = file.name.match(/\.[^.]+$/)?.[0] || '.png';
+    const taskName = getTaskName(file.name, `task_${i+1}`);
     const newImgName = `${n}_${taskName}_success${ext}`;
     const newTxtName = `${n}_${taskName}_success.txt`;
     notes.push({
@@ -597,8 +611,8 @@ function buildScreenshotNotes(){
   S.files.error.forEach((file, i) => {
     const id = `note_error_${i}`;
     const f0=vt(`${id}_f0`), f1=vt(`${id}_f1`), f2=vt(`${id}_f2`);
-    const taskName = f0 ? f0.replace(/[^a-zA-Z0-9]/g,'_').toLowerCase().slice(0,30) : `task_${i+1}`;
     const ext = file.name.match(/\.[^.]+$/)?.[0] || '.png';
+    const taskName = getTaskName(file.name, `task_${i+1}`);
     const newImgName = `${n}_${taskName}_error${ext}`;
     const newTxtName = `${n}_${taskName}_error.txt`;
     notes.push({
@@ -614,8 +628,8 @@ function buildScreenshotNotes(){
   S.files.fixed.forEach((file, i) => {
     const id = `note_fixed_${i}`;
     const f0=vt(`${id}_f0`), f1=vt(`${id}_f1`), f2=vt(`${id}_f2`);
-    const taskName = f0 ? f0.replace(/[^a-zA-Z0-9]/g,'_').toLowerCase().slice(0,30) : `task_${i+1}`;
     const ext = file.name.match(/\.[^.]+$/)?.[0] || '.png';
+    const taskName = getTaskName(file.name, `task_${i+1}`);
     const newImgName = `${n}_${taskName}_fixed${ext}`;
     const newTxtName = `${n}_${taskName}_fixed.txt`;
     notes.push({
